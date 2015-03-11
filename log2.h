@@ -154,4 +154,21 @@ inline unsigned short floor_log2_s_asm_loop(register unsigned short x)
 
     return result;
 }
+/*
+ * BSR?  Is it really this easy?
+ */
+inline unsigned short log2_bsr(register unsigned short x)
+{
+    unsigned short result;
+    if (x == 0)
+        return 0;
+    asm(
+        "bsr   %1, %0        ;"  // 
+
+        :"=r"(result)         // output
+        :"r"(x)               // input
+        );
+
+    return result;
+}
 #endif /* __LOG2_H */

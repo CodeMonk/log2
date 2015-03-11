@@ -44,33 +44,58 @@ char *displayElapsed(char *dest, size_t destLen, Timer *elapsed)
     return dest;
 }
 
+// Helper function for our floating point log2
+unsigned short libmLog2(unsigned short value)
+{
+    return (unsigned short)log2((double)value);
+}
+
+typedef struct {
+    unsigned short (*func)(unsigned short);
+    char *funcName;
+    unsigned short result;
+} FancyFuncPtr;
+
 /*
  * Quick unit test.  Will assert if floor_log2_s() returns
  * a value different than floor(log2())
  */
 void logTest(unsigned short x)
 {
-    unsigned short log_s, log_loop, log_asm, log_asm_loop;
-    double log_f;
+    unsigned short result;
+    int i;
 
-    log_s = floor_log2_s(x);
-    log_loop = floor_log2_s_loop(x);
-    log_asm = floor_log2_s_asm(x);
-    log_asm_loop = floor_log2_s_asm_loop(x);
-    log_f = log2((double)x);
+    FancyFuncPtr funcs[] = {
+        { log2_bsr, "log2_bsr" , 0 },
+        { floor_log2_s, "floor_log2_s" , 0 },
+        { floor_log2_s_loop, "floor_log2_s_loop" , 0 },
+        { floor_log2_s_asm, "floor_log2_s_asm" , 0 },
+        { floor_log2_s_asm_loop, "floor_log2_s_asm_loop" , 0 },
+        { libmLog2,  "libmLog2" , 0 }
+    };
+#define FUNCS_LEN ((sizeof(funcs)/sizeof(FancyFuncPtr)))
+#define BUF_SIZ 256
 
-    printf("x=0x%04x: asm()=%u, asm_loop()=%u, log2_s()=%u log2_s_loop()=%u libm:log2()=%f\n",
-            x, log_asm, log_asm_loop, log_s, log_loop, log_f);
+    char buffer[BUF_SIZ+1];
+
+    for (i=0; i < FUNCS_LEN; i++) {
+        funcs[i].result = funcs[i].func(x);
+    }
 
     // Cast should truncate the double into a floor()
-    assert((log_asm == log_asm_loop) && 
-            (log_asm == log_s) &&
-            (log_asm == log_loop) &&
-            (log_s == (unsigned short)log_f));
+    snprintf(buffer, BUF_SIZ, "x=0x%04x: ", x);
+    result = funcs[0].result;
+    for (i=1; i < FUNCS_LEN; i++) {
+        if (funcs[i].result != result) {
+            printf("%s:Error: %s()=%u != %s()=%u\n", 
+                    buffer,
+                    funcs[0].funcName, funcs[0].result,
+                    funcs[i].funcName, funcs[i].result);
+            assert(funcs[i].result == result);
+        }
+    }
+    printf("%s: %u\n", buffer, result);
 }
-
-
-
 
 unsigned short runTest(unsigned short (*func)(unsigned short), 
         unsigned long times, Timer *elapsed)
@@ -93,10 +118,6 @@ unsigned short runTest(unsigned short (*func)(unsigned short),
     return result;
 }
 
-unsigned short libmLog2(unsigned short value)
-{
-    return (unsigned short)log2((double)value);
-}
 
 #define TIMEIT(func,num,elapsed,dummy,buff) \
     dummy += runTest(func, num, elapsed);                          \
@@ -114,6 +135,7 @@ unsigned short timeLog(unsigned long itterations)
 
     printf("Running %lu itterations of all algorithms:\n", itterations);
 
+    TIMEIT(log2_bsr, itterations,&elapsed, dummy_result, buffer);
     TIMEIT(floor_log2_s_asm, itterations,&elapsed, dummy_result, buffer);
     TIMEIT(floor_log2_s_asm_loop, itterations,&elapsed, dummy_result, buffer);
     TIMEIT(floor_log2_s, itterations,&elapsed, dummy_result, buffer);
