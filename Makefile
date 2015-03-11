@@ -1,5 +1,5 @@
 
-CFLAGS=-Wall -g
+CFLAGS=-Wall -O2
 CC=gcc
 
 test_log2: test_log2.c log2.h

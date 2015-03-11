@@ -34,7 +34,7 @@ inline unsigned short floor_log2_s(register unsigned short x)
 }
 
 /*
- * And, same logic, but in inline assembly.
+ * And, same logic, but in assembly.
  */
 inline unsigned short floor_log2_s_asm(register unsigned short x)
 {
@@ -44,7 +44,7 @@ inline unsigned short floor_log2_s_asm(register unsigned short x)
         "movw   %1, %%ax      ;"  // 
 
         "testw  %%ax, %%ax    ;"
-        "je     end           ;"  // Short circuit zero
+        "je     end_%=        ;"  // Short circuit zero
 
         "movl   %%eax, %%edx  ;" // Move x to our dx
         "shrw   %%dx          ;" // x >> 1
@@ -96,7 +96,55 @@ inline unsigned short floor_log2_s_asm(register unsigned short x)
         "andw   $0x3f, %%ax   ;" // ax &= 0x3f
         "subw   $0x1, %%ax    ;" // ax -= 1
 
-        "end:                 ;"
+        "end_%=:                 ;"
+        "mov    %%ax, %0      ;"
+
+        :"=r"(result)         // output
+        :"r"(x)               // input
+        :"%eax", "%edx"       // clobbered registers
+        );
+
+    return result;
+}
+
+/*
+ * Looping logic this time
+ */
+inline unsigned short floor_log2_s_loop(register unsigned short x)
+{
+    unsigned short result=0;
+    x = x >> 1;
+    while (x != 0) {
+        result++;
+        x = x >> 1;
+    }
+    return result;
+}
+
+/*
+ * Looping logic this time
+ */
+inline unsigned short floor_log2_s_asm_loop(register unsigned short x)
+{
+    unsigned short result=0;
+    asm(
+        //"xorl   %%eax, %%eax  ;"  // Try only using 16 bits
+        "movw   %1, %%ax      ;"  // 
+
+        "shrw   %%ax          ;"  // Test for zero or one
+        "testw  %%ax, %%ax    ;"  // And, we ignore the first shift anyway
+        "je     end_%=        ;"  // Short circuit zero
+
+        "xorl   %%edx, %%edx  ;" // zero out our counter
+
+        "loop_%=:             ;" // Loop until we hit zero
+        "incw   %%dx          ;" // increment counter
+        "shrw   %%ax          ;" // x >> 1
+        "jne    loop_%=       ;" // And, loop if not zero
+
+        "movw   %%dx, %%ax    ;" // Move our result (count) into ax
+
+        "end_%=:              ;"
         "mov    %%ax, %0      ;"
 
         :"=r"(result)         // output
