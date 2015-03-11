@@ -3,6 +3,8 @@ log2
 
 Fast log2() floor for finding magnitude of base 2 integers
 
+Both C and inline assembly versions.
+
 Usage
 -----
 

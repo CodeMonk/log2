@@ -13,16 +13,18 @@
 void logTest(unsigned short x)
 {
     unsigned short log_s;
+    unsigned short log_asm;
     double log_f;
 
     log_s = floor_log2_s(x);
+    log_asm = floor_log2_s_asm(x);
     log_f = log2((double)x);
 
-    printf("x=0x%04x -- floor_log2_s(%u)=%u log2(%u)=%f\n", x, 
-        x, log_s, x,log_f);
+    printf("x=0x%04x: floor_log2_asm()=%u, floor_log2_s()=%u log2()=%f\n",
+            x, log_asm, log_s, log_f);
 
     // Cast should truncate the double into a floor()
-    assert(log_s == (unsigned short)log_f);
+    assert((log_asm == log_s) && (log_s == (unsigned short)log_f));
 }
 
 char *getTime(clock_t real_s, struct tms start,
@@ -58,6 +60,16 @@ unsigned short timeLog(unsigned long itterations)
     real_s = times(&start);
     for (i = 0; i < itterations; i++) {
         value = (unsigned short)(i & 0xffff);
+        result += floor_log2_s_asm(value);
+    }
+    real_e = times(&end);
+
+    printf("%lu itterations of floor_log2_s_asm(): %s\n", 
+        itterations, getTime(real_s, start, real_e, end));
+    
+    real_s = times(&start);
+    for (i = 0; i < itterations; i++) {
+        value = (unsigned short)(i & 0xffff);
         result += floor_log2_s(value);
     }
     real_e = times(&end);
@@ -81,6 +93,10 @@ int main (int argc, char *argv[])
 {
     unsigned short i;
     unsigned short x;
+
+//    printf("log2_asm(%u) = %u\n", 0x1234, floor_log2_s_asm(0x1234));
+//    printf("log2_asm(%u) = %u\n", 0x0, floor_log2_s_asm(0x0));
+//    assert(0);
 
     for (i=0 ; i < 16; i++) {
         // for each power of 2, print our evil patterns
